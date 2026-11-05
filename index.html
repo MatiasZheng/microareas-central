@@ -137,6 +137,11 @@ td.neg { color: var(--bad); font-weight: 700; } td.pos { color: var(--good); fon
 .seg button { font: 600 12px var(--f-ui); border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 10px; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--brand); color: var(--on-brand); }
 .muted { color: var(--ink-3); }
+.card .d { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 2px 6px; padding: 2px 9px; line-height: 1.35; }
+.card .d .pv { font-weight: 600; opacity: .9; }
+.cmpb { display: inline-block; font-size: 12px; font-weight: 600; color: var(--brand-deep); background: var(--accent); border-radius: 999px; padding: 3px 10px; margin-right: 6px; }
+.cmpb b { font-weight: 800; } .cmpb.off { background: var(--surface-2); color: var(--ink-3); }
+.sec-h .hint .cmpb { vertical-align: middle; }
 .hq { all: unset; box-sizing: border-box; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font: 800 10px/1 var(--f-ui); background: var(--surface-2); color: var(--brand-mid); border: 1px solid var(--line); cursor: pointer; vertical-align: middle; margin-left: 4px; text-transform: none; letter-spacing: 0; }
 .hq:hover, .hq[aria-expanded=true] { background: var(--brand-mid); color: #fff; border-color: var(--brand-mid); }
 .hq:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -181,7 +186,7 @@ td.l, th.l { text-align: left; }
       <div class="fld v-rank"><label for="f-ch">Churn a contar</label><select id="f-ch"><option value="all">Todas las bajas</option><option value="abr" id="opt-abr">Solo clientes desde abril</option></select></div>
       <div class="fld v-dem"><label for="f-sv">Servicio (OS)</label><select id="f-sv"><option value="">Todos</option><option value="0">Soporte</option><option value="1">Instalación</option><option value="2">Comercial</option><option value="3">Negociación</option></select></div>
       <div class="fld v-dem"><label for="f-cn">OS canceladas</label><select id="f-cn"><option value="ex">Excluir canceladas</option><option value="in">Incluir canceladas</option></select></div>
-      <div class="fld"><label for="f-cmp">Comparar con</label><select id="f-cmp"><option value="prev">Período anterior</option><option value="none">Sin comparación</option></select></div>
+      <div class="fld"><label for="f-cmp">Comparar</label><select id="f-cmp"><option value="prev">Sí, con el período anterior</option><option value="none">No comparar</option></select></div>
     </div>
     <div class="actions">
       <div class="weights v-rank"><span>Pesos del ranking:</span>
@@ -332,9 +337,12 @@ function agg(ini,fin){
 function sum(o,pops){const t={v:0,c:0,i:0,b:0};pops.forEach(p=>{for(const k in t)t[k]+=o[p][k];});return t;}
 function monthsEq(ini,fin){let n=0;D.months.forEach(m=>{if(m>=ini&&m<=fin)n+=(isPart(m)?D.partial.f:1);});return n||1;}
 function prevRange(){const a=idx(S.ini),b=idx(S.fin),len=b-a+1;const pa=a-len;if(pa<0)return null;return [D.months[pa],D.months[a-1]];}
-function delta(cur,prev,goodUp,isPct){if(prev==null)return '';const d=cur-prev;if(Math.abs(d)<1e-9)return '= igual';
-  const good=goodUp?d>0:d<0;const txt=isPct?((d>0?'+':'')+(d*100).toFixed(1).replace('.',',')+' pp'):((d>0?'+':'')+fmt(d)+(prev?` (${d>0?'+':''}${Math.round(d/Math.abs(prev)*100)}%)`:''));
-  return `<span title="${good?'mejora':'empeora'}">${d>0?'▲':'▼'} ${txt} ${good?'✓':'✗'}</span>`;}
+let CMPL='';
+function prShort(pr){if(!pr)return '';const [a,b]=pr,ya=Math.floor(a/100),yb=Math.floor(b/100);if(a===b)return MN[a%100-1]+' '+ya;return MN[a%100-1]+(ya!==yb?' '+ya:'')+'–'+MN[b%100-1]+' '+yb;}
+function cmpBanner(pr){if(S.cmp!=='prev')return '';if(!pr)return '<span class="cmpb off">Sin meses anteriores para comparar</span>';return `<span class="cmpb">Comparando <b>${prShort([S.ini,S.fin])}</b> con <b>${prShort(pr)}</b></span>`;}
+function delta(cur,prev,goodUp,isPct){if(prev==null)return '';const d=cur-prev;const pv=`<span class="pv">${CMPL}: ${(prev>0&&goodUp===true&&false)?'':''}${fmt(prev)}</span>`;if(Math.abs(d)<1e-9)return pv+' = igual';
+  const good=goodUp?d>0:d<0;const txt=isPct?((d>0?'+':'')+(d*100).toFixed(1).replace('.',',')+' pp'):((d>0?'+':'')+fmt(d)+(prev>0?` (${d>0?'+':''}${Math.round(d/prev*100)}%)`:''));
+  return pv+`<span title="${good?'mejora':'empeora'}">→ ${d>0?'▲':'▼'} ${txt} ${good?'✓':'✗'}</span>`;}
 function renderRank(){
   if(S.fin<S.ini){S.fin=S.ini;writeUI();}
   if(VIEW!=='ranking')return;
@@ -343,7 +351,8 @@ function renderRank(){
   const T=sum(A,scope);
   const pr=S.cmp==='prev'?prevRange():null; const AP=pr?agg(pr[0],pr[1]):null; const TP=AP?sum(AP,scope):null;
   const rate=T.b?T.c/meq/T.b:0;
-  $('cmp-lbl').textContent=(S.pop?S.pop+' · ':'')+mlab(S.ini)+' – '+mlab(S.fin)+(pr?` · vs ${mlab(pr[0])} – ${mlab(pr[1])}`:'')+(S.deal?' · '+S.deal:'');
+  CMPL=prShort(pr);
+  $('cmp-lbl').innerHTML=cmpBanner(pr)+' '+(S.pop?S.pop+' · ':'Toda Central · ')+mlab(S.ini)+' – '+mlab(S.fin)+(S.deal?' · '+S.deal:'');
   const CK={'Ventas':'c-ventas','Churn':'c-churn','Neto (ventas − churn)':'c-neto','Base activa':'c-base','Tasa de churn mensual':'c-tasa'};
   window.__CUR={v:T.v,c:T.c,i:T.i,b:T.b,meq};
   const card=(cls,t,v,s,d)=>`<div class="card ${cls}"><div class="t">${t}${CK[t]?hq(CK[t]):''}</div><div class="v num">${v}</div><div class="s">${s}</div><div class="d">${d||''}</div></div>`;
@@ -353,7 +362,7 @@ function renderRank(){
     card('k-c','Churn',fmt(T.c),pct(T.c?T.i/T.c:0,0)+' por falta de pago',TP?delta(T.c,TP.c,false):'')+
     card('k-n'+(neto<0?' neg':''),'Neto (ventas − churn)',(neto>0?'+':'')+fmt(neto),'',TP?delta(neto,TP.v-TP.c,true):'')+
     card('k-b','Base activa',fmt(T.b),'Act.+Bloq. al '+D.corte,'')+
-    card('k-t','Tasa de churn mensual',pct(rate,2),'churn ÷ meses ÷ base','');
+    card('k-t','Tasa de churn mensual',pct(rate,2),'churn ÷ meses ÷ base',TP&&T.b?delta(rate,TP.c/meq/T.b,false,true).replace(/(<span class="pv">[^:]*: )[^<]*/,'$1'+pct(TP.c/meq/T.b,2)):'');
   // ranking
   const rows=D.pops.filter(okT).map(p=>({p,t:D.terr[p]||'',...A[p]}));
   const TT=sum(A,rows.map(r=>r.p));
@@ -433,7 +442,7 @@ function render(){renderRank();renderOS();renderCart();}
 const inR=m=>m>=S.ini&&m<=S.fin;
 const okC=c=>S.cn==='in'||!c;
 const okS=s=>S.sv===''||S.sv==null||+S.sv===s;
-const nd=(cur,prev)=>{if(prev==null)return '';const d=cur-prev;if(!d)return '= igual';return `${d>0?'▲':'▼'} ${d>0?'+':''}${fmt(d)}${prev?` (${d>0?'+':''}${Math.round(d/prev*100)}%)`:''}`;};
+const nd=(cur,prev)=>{if(prev==null)return '';const d=cur-prev;const pv=`<span class="pv">${CMPL}: ${fmt(prev)}</span>`;if(!d)return pv+' = igual';return pv+`→ ${d>0?'▲':'▼'} ${d>0?'+':''}${fmt(d)}${prev?` (${d>0?'+':''}${Math.round(d/prev*100)}%)`:''}`;};
 const th=(l,cls)=>`<th class="${cls||''}">${l}</th>`;
 const td=(v,cls,st)=>`<td class="num ${cls||''}" ${st?`style="${st}"`:''}>${v}</td>`;
 function setT(id,h,b,f){const t=$(id);t.tHead.innerHTML=h;t.tBodies[0].innerHTML=b;t.tFoot.innerHTML=f||'';}
@@ -447,7 +456,8 @@ function renderOS(){
   const pr=S.cmp==='prev'?prevRange():null;
   const cnt=(ini,fin,s)=>O.reduce((a,r)=>a+((r[0]>=ini&&r[0]<=fin&&inPop(r[1])&&okC(r[5])&&(s==null||r[2]===s))?r[6]:0),0);
   const cols=['k-gen','k-sop','k-ins','k-com','k-neg'];
-  $('os-lbl').textContent=(S.pop?S.pop+' · ':'')+mlab(S.ini)+' – '+mlab(S.fin)+(pr?` · vs ${mlab(pr[0])} – ${mlab(pr[1])}`:'')+(S.cn==='in'?' · incluye canceladas':' · sin canceladas');
+  CMPL=prShort(pr);
+  $('os-lbl').innerHTML=cmpBanner(pr)+' '+(S.pop?S.pop+' · ':'Toda Central · ')+mlab(S.ini)+' – '+mlab(S.fin)+(S.cn==='in'?' · incluye canceladas':' · sin canceladas');
   $('os-cards').innerHTML=[null,0,1,2,3].map((s,i)=>{const v=cnt(S.ini,S.fin,s),p=pr?cnt(pr[0],pr[1],s):null;
     return `<div class="card ${cols[i]} ${s!=null&&!okS(s)?'off':''}"><div class="t">${s==null?'Total OS':SVN[s]}</div><div class="v num">${fmt(v)}</div><div class="s">prom. ${fmt(v/meq)}/mes</div><div class="d">${nd(v,p)}</div></div>`;}).join('');
   // servicio x mes
@@ -524,7 +534,7 @@ function renderCart(){
 // ===== Ayuda interactiva (?) =====
 const HELP={
  'f-ch':{t:'Churn a contar',b:'<p><b>Todas las bajas</b>: cuenta todos los contratos cancelados o rescindidos en el período (recomendado; la base es la cartera completa).</p><p><b>Solo clientes activados desde abril</b>: cuenta solo las bajas de clientes que entraron desde el inicio de los datos de ventas. Sirve para ver cuántos clientes nuevos se pierden.</p>'},
- 'f-cmp':{t:'Comparar con',b:'<p><b>Período anterior</b>: compara con la misma cantidad de meses inmediatamente antes. Ej.: si elegís Oct, compara con Sep; si elegís Ago–Oct, con May–Jul.</p><p>La etiqueta bajo cada tarjeta muestra la diferencia: ▲ subió, ▼ bajó; ✓ mejora, ✗ empeora.</p>'},
+ 'f-cmp':{t:'Comparar con',b:'<p><b>Período anterior</b>: compara con la misma cantidad de meses inmediatamente antes. Ej.: si elegís Oct, compara con Sep; si elegís Ago–Oct, con May–Jul.</p><p>Arriba de las tarjetas aparece en amarillo <b>qué se compara con qué</b>. Bajo cada tarjeta: el valor del período anterior y la diferencia. Ej.: «Jul–Ago 2026: 187 → ▼ −67 (−36%)» = antes eran 187, ahora 67 menos.</p><p>▲ subió, ▼ bajó. En el Ranking además: ✓ mejora, ✗ empeora (más churn es peor).</p>'},
  'f-cn':{t:'OS canceladas',b:'<p>Las OS en estado <b>Cancelado</b> nunca se ejecutaron. Con «Excluir» se mide la demanda real atendida; con «Incluir» se ve todo lo que se pidió.</p>'},
  'f-sv':{t:'Servicio (OS)',b:'<p>Filtra las tablas de demanda por tipo de servicio: Soporte (reclamos técnicos), Instalación, Comercial (cambio de domicilio, repetidor, cambio de lugar de ONU) o Negociación (reconexión).</p>'},
  'pesos':{t:'Pesos del ranking',b:'<p>Cuánto pesa cada criterio en el <b>Puntaje</b>. Por defecto 33 / 33 / 33 (igual peso).</p><p>Ej.: si te importa más dónde se vende, poné Ventas 50, Base 25, Churn 25. No hace falta que sumen 100: se normalizan.</p>'},
