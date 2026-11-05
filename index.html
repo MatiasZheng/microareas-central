@@ -137,6 +137,11 @@ td.neg { color: var(--bad); font-weight: 700; } td.pos { color: var(--good); fon
 .seg button { font: 600 12px var(--f-ui); border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 10px; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--brand); color: var(--on-brand); }
 .muted { color: var(--ink-3); }
+body:not(.is-admin) .admin-only { display: none !important; }
+.adm .fld input { width: 100%; font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+.adm .fld > label { color: var(--ink-2); }
+.btn.ghost2 { background: var(--surface); color: var(--brand); border: 1px solid var(--line); }
+.status2 { font-size: 12px; color: var(--ink-2); } .status2.err { color: var(--bad); font-weight: 700; } .status2.ok { color: var(--good); font-weight: 700; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .tabs a { font: 700 13px var(--f-ui); text-decoration: none; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
 .tabs a[aria-selected=true] { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
@@ -175,17 +180,39 @@ td.l, th.l { text-align: left; }
         <label>Churn <input class="w-in" id="w-c" type="number" min="0" max="100" step="5" value="33"></label></div>
       <span style="flex:1"></span>
       <input type="file" id="file" accept=".xlsx,.xls" multiple hidden>
-      <button class="btn" id="btn-up" type="button">Cargar exports</button>
-      <button class="btn ghost" id="btn-dl" type="button">Descargar cruce (.xlsx)</button>
+      <button class="btn admin-only" id="btn-up" type="button">Cargar exports</button>
+      <button class="btn ghost admin-only" id="btn-dl" type="button">Descargar cruce (.xlsx)</button>
       <button class="btn ghost" id="btn-reset" type="button">Limpiar filtros</button>
       <button class="btn ghost theme-btn" id="btn-theme" type="button" aria-label="Cambiar tema">🌙 Oscuro</button>
     </div>
-    <div class="slots" id="slots" hidden></div>
+    <div class="slots admin-only" id="slots" hidden></div>
     <div class="actions">
       <span class="status" id="msg" hidden></span>
     </div>
   </header>
 
+  <section class="sec admin-only" id="admin-panel" aria-labelledby="h-adm">
+    <div class="sec-h"><h2 id="h-adm">Administración · publicar datos para todos</h2><span class="hint">Esta página no la ven los usuarios del tablero. Paso 1: «Cargar exports». Paso 2: «Publicar en GitHub».</span></div>
+    <div class="filters adm">
+      <div class="fld"><label for="g-owner">Usuario / organización GitHub</label><input id="g-owner" type="text" placeholder="tu-usuario"></div>
+      <div class="fld"><label for="g-repo">Repositorio</label><input id="g-repo" type="text" placeholder="microareas-central"></div>
+      <div class="fld"><label for="g-branch">Rama</label><input id="g-branch" type="text" value="main"></div>
+      <div class="fld" style="grid-column: span 2"><label for="g-token">Token de GitHub (se guarda solo en este navegador)</label><input id="g-token" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-pub" type="button">Publicar en GitHub</button>
+      <button class="btn ghost2" id="btn-json" type="button">Copiar data.json</button>
+      <span class="status2" id="pub-msg"></span>
+    </div>
+    <details><summary>Cómo crear el token (una sola vez)</summary><ul>
+      <li>GitHub → foto de perfil → <b>Settings</b> → <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b>.</li>
+      <li>Nombre: «Tablero microáreas». Expiración: la que prefieras (ej. 1 año).</li>
+      <li><b>Repository access</b>: <i>Only select repositories</i> → elegí el repo del tablero.</li>
+      <li><b>Permissions</b> → <b>Repository permissions</b> → <b>Contents: Read and write</b>. Nada más.</li>
+      <li>Generar, copiar el token y pegarlo arriba. No lo compartas: con él se puede modificar ese repo.</li>
+      <li>Si no querés usar token: «Copiar data.json», creá/editá el archivo <code>data.json</code> en el repo, pegá y «Commit changes».</li>
+    </ul></details>
+  </section>
   <nav class="tabs" role="tablist" aria-label="Vistas">
     <a href="#ranking" role="tab" data-v="ranking">Ranking · Ventas, Base y Churn</a>
     <a href="#demanda" role="tab" data-v="demanda">Demanda de OS</a>
@@ -255,8 +282,9 @@ td.l, th.l { text-align: left; }
 <script>
 (function(){
 (function(){try{const th=localStorage.getItem('microareas_theme');if(th)document.documentElement.dataset.theme=th;}catch(e){}})();
-let D=JSON.parse(document.getElementById('seed').textContent);
-try{const s=localStorage.getItem('microareas_v3');if(s){const x=JSON.parse(s);if(x&&x.V)D=x;}}catch(e){}
+const MODE=/*MODE*/'view';if(MODE==='admin')document.body.classList.add('is-admin');
+let D=JSON.parse(document.getElementById('seed').textContent);let confirmLoaded=false;
+if(MODE==='admin'){try{const s=localStorage.getItem('microareas_v3');if(s){const x=JSON.parse(s);if(x&&x.V){D=x;confirmLoaded=true;}}}catch(e){}}
 const $=id=>document.getElementById(id);
 const MN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const isPart=m=>D.partial&&D.partial.m===m;
@@ -482,6 +510,29 @@ function renderCart(){
 ['t-psv','t-pm','t-pd','t-pt','t-ca','t-cd','t-cu'].forEach(id=>$(id).addEventListener('click',e=>{const tr=e.target.closest('tbody tr');if(tr&&tr.dataset.p){S.pop=S.pop===tr.dataset.p?'':tr.dataset.p;writeUI();render();}}));
 
 S.sort={k:'score',d:-1};init();setView();render();
+(async()=>{try{const r=await fetch('data.json?v='+Date.now(),{cache:'no-store'});if(r.ok){const x=await r.json();if(x&&x.V&&(MODE!=='admin'||!localStorage.getItem('microareas_v3'))){D=x;init();render();}}}catch(e){}})();
+// ---- publicar en GitHub (solo admin)
+if(MODE==='admin'){
+  const g=id=>$(id);const LS='microareas_gh';
+  try{const c=JSON.parse(localStorage.getItem(LS)||'{}');['owner','repo','branch','token'].forEach(k=>{if(c[k])g('g-'+k).value=c[k];});}catch(e){}
+  if(!g('g-owner').value&&/github\.io$/.test(location.hostname)){g('g-owner').value=location.hostname.split('.')[0];g('g-repo').value=location.pathname.split('/')[1]||'';}
+  const pm=(t,k)=>{const e=g('pub-msg');e.textContent=t;e.className='status2 '+(k||'');};
+  const save=()=>{try{localStorage.setItem(LS,JSON.stringify({owner:g('g-owner').value.trim(),repo:g('g-repo').value.trim(),branch:g('g-branch').value.trim()||'main',token:g('g-token').value.trim()}));}catch(e){}};
+  ['g-owner','g-repo','g-branch','g-token'].forEach(id=>g(id).addEventListener('change',save));
+  const json=()=>JSON.stringify(D);
+  g('btn-json').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(json());pm('data.json copiado: pegalo en el archivo data.json del repo.','ok');}catch(e){pm('El navegador no dejó copiar.','err');}});
+  g('btn-pub').addEventListener('click',async()=>{save();const o=g('g-owner').value.trim(),r=g('g-repo').value.trim(),b=g('g-branch').value.trim()||'main',tk=g('g-token').value.trim();
+    if(!o||!r||!tk){pm('Completá usuario, repositorio y token.','err');return;}
+    if(!window.__DET&&!confirmLoaded){pm('Primero cargá los exports (los datos que se ven ahora son los publicados).','err');return;}
+    const url=`https://api.github.com/repos/${o}/${r}/contents/data.json`;const h={Authorization:'Bearer '+tk,Accept:'application/vnd.github+json'};
+    pm('Publicando…');
+    try{let sha;const q=await fetch(url+'?ref='+encodeURIComponent(b),{headers:h});if(q.ok)sha=(await q.json()).sha;else if(q.status!==404)throw new Error('GitHub respondió '+q.status+(q.status===401?' (token inválido o vencido)':q.status===403?' (el token no tiene permiso Contents: write)':''));
+      const content=btoa(unescape(encodeURIComponent(json())));
+      const p=await fetch(url,{method:'PUT',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify({message:'Actualiza datos al '+D.corte,content,branch:b,...(sha?{sha}:{})})});
+      if(!p.ok){const e=await p.json().catch(()=>({}));throw new Error('GitHub respondió '+p.status+': '+(e.message||''));}
+      pm('✓ Publicado. En 1–2 minutos todos ven los datos al '+D.corte+' (recargando el tablero).','ok');}
+    catch(e){pm('No se pudo publicar: '+e.message,'err');}});
+}
 // ===== Cargador y cruce de los 4 exports de ZOY (todo en el navegador) =====
 const FILES={sup:null,act:null,canc:null,infra:null,cart:null};
 const LBL={sup:'Relatorio Suportes (OS)',act:'Contratos activados',canc:'Contratos cancelados',infra:'ContratoInfra (base)',cart:'Contratos activos – dealer (opcional)'};
