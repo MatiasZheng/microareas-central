@@ -137,6 +137,16 @@ td.neg { color: var(--bad); font-weight: 700; } td.pos { color: var(--good); fon
 .seg button { font: 600 12px var(--f-ui); border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 10px; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--brand); color: var(--on-brand); }
 .muted { color: var(--ink-3); }
+.hq { all: unset; box-sizing: border-box; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font: 800 10px/1 var(--f-ui); background: var(--surface-2); color: var(--brand-mid); border: 1px solid var(--line); cursor: pointer; vertical-align: middle; margin-left: 4px; text-transform: none; letter-spacing: 0; }
+.hq:hover, .hq[aria-expanded=true] { background: var(--brand-mid); color: #fff; border-color: var(--brand-mid); }
+.hq:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card .hq { background: rgba(255,255,255,.22); color: inherit; border-color: rgba(255,255,255,.35); }
+.k-t .hq { background: rgba(36,17,66,.1); border-color: rgba(36,17,66,.25); }
+.hpop { position: absolute; z-index: 50; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.45; box-shadow: 0 12px 32px rgba(36,17,66,.22); text-align: left; text-transform: none; letter-spacing: 0; font-weight: 400; white-space: normal; }
+.hpop .hh { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--brand); font-size: 14px; }
+.hpop .hc { all: unset; cursor: pointer; font-size: 18px; line-height: 1; color: var(--ink-3); padding: 0 4px; }
+.hpop p { margin: 6px 0; } .hpop .src { color: var(--ink-3); font-size: 12px; }
+.hpop .hx { margin-top: 8px; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; display: grid; gap: 2px; } .hpop .hx span { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
 body:not(.is-admin) .admin-only { display: none !important; }
 .adm .fld input { width: 100%; font: 500 13px var(--f-ui); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
 .adm .fld > label { color: var(--ink-2); }
@@ -334,7 +344,9 @@ function renderRank(){
   const pr=S.cmp==='prev'?prevRange():null; const AP=pr?agg(pr[0],pr[1]):null; const TP=AP?sum(AP,scope):null;
   const rate=T.b?T.c/meq/T.b:0;
   $('cmp-lbl').textContent=(S.pop?S.pop+' · ':'')+mlab(S.ini)+' – '+mlab(S.fin)+(pr?` · vs ${mlab(pr[0])} – ${mlab(pr[1])}`:'')+(S.deal?' · '+S.deal:'');
-  const card=(cls,t,v,s,d)=>`<div class="card ${cls}"><div class="t">${t}</div><div class="v num">${v}</div><div class="s">${s}</div><div class="d">${d||''}</div></div>`;
+  const CK={'Ventas':'c-ventas','Churn':'c-churn','Neto (ventas − churn)':'c-neto','Base activa':'c-base','Tasa de churn mensual':'c-tasa'};
+  window.__CUR={v:T.v,c:T.c,i:T.i,b:T.b,meq};
+  const card=(cls,t,v,s,d)=>`<div class="card ${cls}"><div class="t">${t}${CK[t]?hq(CK[t]):''}</div><div class="v num">${v}</div><div class="s">${s}</div><div class="d">${d||''}</div></div>`;
   const neto=T.v-T.c;
   $('cards').innerHTML=
     card('k-v','Ventas',fmt(T.v),'prom. '+fmt(T.v/meq)+'/mes',TP?delta(T.v,TP.v,true):'')+
@@ -352,7 +364,7 @@ function renderRank(){
   const cols=[['rank','#'],['p','POP'],['t','Territorio'],['v','Ventas'],['sv','% ventas'],['b','Base'],['sb','% base'],['c','Churn'],['sc','% churn'],['i','Invol.'],['rate','Tasa churn/mes'],['n','Neto'],['score','Puntaje']];
   const k=S.sort.k,d=S.sort.d;
   rows.sort((a,b)=>{const ra=RANKED.includes(a.p),rb=RANKED.includes(b.p);if(ra!==rb)return ra?-1:1;const x=a[k]??1e9,y=b[k]??1e9;return (typeof x==='string'?x.localeCompare(y):x-y)*d;});
-  $('t-rank').tHead.innerHTML='<tr>'+cols.map(([c,l])=>`<th data-k="${c}"${c===k?` aria-sort="${d<0?'descending':'ascending'}"`:''}>${l}${c===k?(d<0?' ▾':' ▴'):''}</th>`).join('')+'</tr>';
+  $('t-rank').tHead.innerHTML='<tr>'+cols.map(([c,l])=>`<th data-k="${c}"${c===k?` aria-sort="${d<0?'descending':'ascending'}"`:''}>${l}${c===k?(d<0?' ▾':' ▴'):''}${hq('k-'+c,l)}</th>`).join('')+'</tr>';
   $('t-rank').tBodies[0].innerHTML=rows.map(r=>`<tr data-p="${r.p}" class="${S.pop===r.p?'sel':''}">
     <td>${r.rank?`<span class="rk ${r.rank<=3?'top':''}">${r.rank}</span>`:'<span class="muted">—</span>'}</td><td><b>${r.p}</b></td><td style="text-align:left">${r.t}</td>
     <td class="num">${fmt(r.v)}</td><td class="num">${pct(r.sv)}</td><td class="num">${fmt(r.b)}</td><td class="num">${pct(r.sb)}</td>
@@ -402,7 +414,7 @@ function drawChart(ser){if(VIEW!=='ranking')return;
 ['f-ini','f-fin','f-ter','f-pop','f-deal','f-ch','f-cmp','f-sv','f-cn'].forEach(id=>$(id).addEventListener('change',()=>{readUI();if(S.pop&&S.ter&&D.terr[S.pop]!==S.ter){S.pop='';writeUI();}render();}));
 ['w-v','w-b','w-c'].forEach(id=>$(id).addEventListener('input',render));
 $('btn-reset').addEventListener('click',()=>{defRange();Object.assign(S,{ter:'',pop:'',deal:'',ch:'all',cmp:'prev'});$('w-v').value=33;$('w-b').value=33;$('w-c').value=33;writeUI();render();});
-$('t-rank').addEventListener('click',e=>{const th=e.target.closest('th');if(th){const k=th.dataset.k;if(S.sort.k===k)S.sort.d*=-1;else S.sort={k,d:(k==='p'||k==='t'||k==='rank')?1:-1};render();return;}
+$('t-rank').addEventListener('click',e=>{if(e.target.closest('.hq'))return;const th=e.target.closest('th');if(th){const k=th.dataset.k;if(S.sort.k===k)S.sort.d*=-1;else S.sort={k,d:(k==='p'||k==='t'||k==='rank')?1:-1};render();return;}
   const tr=e.target.closest('tbody tr');if(tr){S.pop=S.pop===tr.dataset.p?'':tr.dataset.p;writeUI();render();}});
 $('t-mx').addEventListener('click',e=>{const tr=e.target.closest('tbody tr');if(tr){S.pop=S.pop===tr.dataset.p?'':tr.dataset.p;writeUI();render();}});
 document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{S.mx=b.dataset.m;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));render();}));
@@ -508,6 +520,64 @@ function renderCart(){
     `<tr><td>TOTAL</td><td></td>${ul.map(d=>td(fmt(pops.reduce((a,p)=>a+(cu[p][d]||0),0)))).join('')}${td(fmt(UT))}${td(fmt(OT))}${td(UT?(OT/UT).toFixed(2).replace('.',','):'0')}</tr>`);
 }
 ['t-psv','t-pm','t-pd','t-pt','t-ca','t-cd','t-cu'].forEach(id=>$(id).addEventListener('click',e=>{const tr=e.target.closest('tbody tr');if(tr&&tr.dataset.p){S.pop=S.pop===tr.dataset.p?'':tr.dataset.p;writeUI();render();}}));
+
+// ===== Ayuda interactiva (?) =====
+const HELP={
+ 'f-ch':{t:'Churn a contar',b:'<p><b>Todas las bajas</b>: cuenta todos los contratos cancelados o rescindidos en el período (recomendado; la base es la cartera completa).</p><p><b>Solo clientes activados desde abril</b>: cuenta solo las bajas de clientes que entraron desde el inicio de los datos de ventas. Sirve para ver cuántos clientes nuevos se pierden.</p>'},
+ 'f-cmp':{t:'Comparar con',b:'<p><b>Período anterior</b>: compara con la misma cantidad de meses inmediatamente antes. Ej.: si elegís Oct, compara con Sep; si elegís Ago–Oct, con May–Jul.</p><p>La etiqueta bajo cada tarjeta muestra la diferencia: ▲ subió, ▼ bajó; ✓ mejora, ✗ empeora.</p>'},
+ 'f-cn':{t:'OS canceladas',b:'<p>Las OS en estado <b>Cancelado</b> nunca se ejecutaron. Con «Excluir» se mide la demanda real atendida; con «Incluir» se ve todo lo que se pidió.</p>'},
+ 'f-sv':{t:'Servicio (OS)',b:'<p>Filtra las tablas de demanda por tipo de servicio: Soporte (reclamos técnicos), Instalación, Comercial (cambio de domicilio, repetidor, cambio de lugar de ONU) o Negociación (reconexión).</p>'},
+ 'pesos':{t:'Pesos del ranking',b:'<p>Cuánto pesa cada criterio en el <b>Puntaje</b>. Por defecto 33 / 33 / 33 (igual peso).</p><p>Ej.: si te importa más dónde se vende, poné Ventas 50, Base 25, Churn 25. No hace falta que sumen 100: se normalizan.</p>'},
+ 'c-ventas':{t:'Ventas',b:'<p>Contratos de Central <b>activados</b> en el período que tienen equipo de venta (TeamVenda). Una venta cuenta en el mes de activación, aunque después el cliente se haya dado de baja.</p><p>No cuenta transferencias de titular ni movimientos administrativos (activaciones sin equipo de venta).</p><p class="src">Fuente: export Contratos activados.</p>',x:c=>`${fmt(c.v)} ventas ÷ ${c.meq.toFixed(2).replace('.',',')} meses = ${fmt(c.v/c.meq)} por mes`},
+ 'c-churn':{t:'Churn (bajas)',b:'<p>Contratos de Central <b>cancelados o rescindidos</b> en el período, por fecha de cancelación. No cuenta los transferidos (cambio de titular: el servicio sigue).</p><p><b>Involuntario</b> = motivo «Falta de Pago». <b>Voluntario</b> = cualquier otro motivo (técnico, económico, competencia, etc.).</p><p class="src">Fuente: export Contratos cancelados.</p>',x:c=>`${fmt(c.i)} de ${fmt(c.c)} bajas fueron por falta de pago (${pct(c.c?c.i/c.c:0,0)})`},
+ 'c-neto':{t:'Neto (ventas − churn)',b:'<p>Cuántos clientes se ganaron o perdieron en el período. <b>Positivo</b> = la microárea crece; <b>negativo</b> = pierde más de lo que vende.</p>',x:c=>`${fmt(c.v)} ventas − ${fmt(c.c)} bajas = ${c.v-c.c>0?'+':''}${fmt(c.v-c.c)}`},
+ 'c-base':{t:'Base activa',b:'<p>Cartera completa de Central: contratos en estado <b>Activo + Bloqueado</b> al día del export. Es una foto: no cambia al elegir otro período.</p><p>El POP de cada contrato viene de la red (caja/VLAN).</p><p class="src">Fuente: export ContratoInfra.</p>',x:c=>`${fmt(c.b)} contratos`},
+ 'c-tasa':{t:'Tasa de churn mensual',b:'<p>Qué porcentaje de la base se pierde por mes, en promedio.</p><p><b>Churn ÷ meses del período ÷ Base activa.</b></p><p>Ej.: una tasa de 5% significa que, de cada 100 clientes, se dan de baja 5 por mes.</p>',x:c=>`${fmt(c.c)} bajas ÷ ${c.meq.toFixed(2).replace('.',',')} meses ÷ ${fmt(c.b)} clientes = ${pct(c.b?c.c/c.meq/c.b:0,2)}`},
+ 'sec-ranking':{t:'Ranking de microáreas',b:'<p>Ordena los POP según cuánto representan en <b>ventas, base y churn</b> de Central.</p><p>Un churn alto <b>sube</b> el puesto: el ranking muestra dónde está el volumen del negocio (y por lo tanto dónde hay que poner foco), no qué POP anda mejor. Para ver eficiencia mirá la <b>Tasa de churn</b> y el <b>Neto</b>.</p><p>OTROS POP (POP chicos) y SIN POP no compiten.</p>'},
+ 'k-rank':{t:'Puesto (#)',b:'<p>Posición según el <b>Puntaje</b>. Los 3 primeros se marcan en amarillo.</p>'},
+ 'k-v':{t:'Ventas',b:'<p>Contratos activados en el período con equipo de venta, en este POP.</p>'},
+ 'k-sv':{t:'% ventas',b:'<p>Ventas del POP ÷ ventas totales de Central (según filtros). Ej.: 15% = este POP aporta 15 de cada 100 ventas.</p>'},
+ 'k-b':{t:'Base',b:'<p>Contratos Activos + Bloqueados del POP (foto actual).</p>'},
+ 'k-sb':{t:'% base',b:'<p>Base del POP ÷ base total de Central.</p>'},
+ 'k-c':{t:'Churn',b:'<p>Bajas del período en este POP (cancelados + rescindidos).</p>'},
+ 'k-sc':{t:'% churn',b:'<p>Bajas del POP ÷ bajas totales de Central.</p>'},
+ 'k-i':{t:'Involuntario',b:'<p>Bajas por motivo «Falta de Pago». El resto del churn es voluntario.</p>'},
+ 'k-rate':{t:'Tasa de churn mensual',b:'<p>Churn del POP ÷ meses ÷ base del POP. Permite comparar POP de distinto tamaño: es la medida de <b>eficiencia</b> (más bajo = mejor).</p>'},
+ 'k-n':{t:'Neto',b:'<p>Ventas − churn del POP. Verde = crece; rojo = pierde clientes.</p>'},
+ 'k-score':{t:'Puntaje',b:'<p>(peso ventas × % ventas + peso base × % base + peso churn × % churn) ÷ suma de pesos.</p><p>Ej. con pesos iguales: 15,9% ventas, 16,1% base y 10,2% churn → (15,9 + 16,1 + 10,2) ÷ 3 = <b>14,1%</b>.</p>'},
+ 'sec-ev':{t:'Evolución mensual',b:'<p>Ventas, churn y churn involuntario mes a mes (líneas), y el neto (barras verdes o rojas). La banda gris marca el período elegido. Pasá el mouse por un mes para ver los valores.</p><p>Responde a los filtros de territorio, POP y dealer.</p>'},
+ 'sec-mx':{t:'Mes a mes por POP',b:'<p>La misma información del ranking abierta por mes. Elegí arriba a la derecha qué ver: ventas, churn, involuntario o neto. Más color = valor más alto (en neto: rojo negativo, verde positivo).</p>'},
+ 'sec-os':{t:'Órdenes de servicio del período',b:'<p>OS creadas en el período (por fecha de creación) de Soporte, Instalación, Comercial y Negociación. No incluye Retiradas, Planta Externa ni Entregas.</p><p class="src">Fuente: export Relatorio Suportes.</p>'},
+ 'sec-svm':{t:'OS por servicio y mes',b:'<p><b>Total período</b> = suma de los meses elegidos. <b>Prom. mensual</b> = total ÷ meses (el mes en curso cuenta en proporción a los días transcurridos). <b>Canceladas período</b> = OS canceladas, siempre se muestran aparte.</p>'},
+ 'sec-tipo':{t:'Detalle por tipo de OS',b:'<p>Qué se pidió dentro de cada servicio. Ej.: en Soporte, <b>Link Loss</b> = cliente sin señal; <b>Alta Modulación</b> = señal degradada; <b>Soporte Interno</b> = problema dentro de la casa (router, cableado).</p>'},
+ 'sec-psv':{t:'Demanda por POP y servicio',b:'<p>OS del período por microárea. <b>Base activa</b> y <b>% con POP de red</b> salen de la cartera (ContratoInfra) para poner la demanda en contexto: un POP con mucha demanda y poca base tiene más OS por cliente.</p>'},
+ 'sec-pm':{t:'Demanda mensual por POP',b:'<p>OS por microárea y mes según el servicio elegido. Columnas en gris = fuera del período elegido.</p>'},
+ 'sec-pd':{t:'Demanda por POP y dealer',b:'<p>OS del período por microárea según el <b>dealer de la OS</b> (quién vendió ese cliente).</p>'},
+ 'sec-pt':{t:'Demanda por POP y tipo de OS',b:'<p>OS del período por microárea y tipo. Sirve para ver, por ejemplo, qué POP concentra más Link Loss.</p>'},
+ 'sec-ca':{t:'Clientes activos por POP',b:'<p>Cartera completa (Activos + Bloqueados) por microárea. <b>POP de Infra</b> = POP informado por la red. <b>% bloqueados</b> = bloqueados ÷ total: clientes con servicio suspendido (en general por mora), en riesgo de baja.</p><p class="src">Fuente: export ContratoInfra.</p>'},
+ 'sec-cd':{t:'Clientes por POP y dealer',b:'<p>Cartera por microárea según el <b>dealer del contrato</b>. «Sin dato» = no se encontró el dealer (si no se cargó el export de Contratos activos).</p>'},
+ 'sec-cu':{t:'Clientes únicos con OS',b:'<p>Cuántos contratos <b>distintos</b> tuvieron al menos una OS (sin canceladas) en los meses cerrados. No es la cartera total.</p><p><b>OS por cliente</b> = OS ÷ clientes únicos. Ej.: 1,40 = cada cliente que pidió algo generó en promedio 1,4 OS (más alto = más reiteraciones).</p>'}
+};
+const hq=(k,lbl)=>HELP[k]?`<button type="button" class="hq" data-h="${k}" aria-label="Ayuda: ${(lbl||HELP[k].t).replace(/"/g,'')}" aria-expanded="false">?</button>`:'';
+const POPV=document.createElement('div');POPV.className='hpop';POPV.hidden=true;POPV.setAttribute('role','dialog');document.body.appendChild(POPV);
+let hOpen=null;
+function hClose(){POPV.hidden=true;if(hOpen)hOpen.setAttribute('aria-expanded','false');hOpen=null;}
+function hShow(btn){const h=HELP[btn.dataset.h];if(!h)return;if(hOpen===btn){hClose();return;}hClose();
+  const x=h.x&&window.__CUR?`<div class="hx"><span>Con los filtros actuales</span><b>${h.x(window.__CUR)}</b></div>`:'';
+  POPV.innerHTML=`<div class="hh"><b>${h.t}</b><button type="button" class="hc" aria-label="Cerrar">×</button></div>${h.b}${x}`;POPV.hidden=false;hOpen=btn;btn.setAttribute('aria-expanded','true');
+  const r=btn.getBoundingClientRect(),w=Math.min(340,window.innerWidth-24);POPV.style.width=w+'px';
+  let left=r.left+window.scrollX-w/2+r.width/2;left=Math.max(12+window.scrollX,Math.min(left,window.scrollX+window.innerWidth-w-12));
+  POPV.style.left=left+'px';POPV.style.top=(r.bottom+window.scrollY+8)+'px';
+  const ph=POPV.getBoundingClientRect();if(ph.bottom>window.innerHeight&&r.top>ph.height+16)POPV.style.top=(r.top+window.scrollY-ph.height-8)+'px';}
+document.addEventListener('click',e=>{const b=e.target.closest('.hq');if(b){e.preventDefault();e.stopPropagation();hShow(b);return;}if(e.target.closest('.hc')||(!e.target.closest('.hpop')&&hOpen))hClose();},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&hOpen){const b=hOpen;hClose();b.focus();}});
+window.addEventListener('resize',hClose);
+// botones estáticos (filtros y secciones)
+[['f-ch','label[for=f-ch]'],['f-cmp','label[for=f-cmp]'],['f-cn','label[for=f-cn]'],['f-sv','label[for=f-sv]']].forEach(([k,s])=>{const el=document.querySelector(s);if(el)el.insertAdjacentHTML('beforeend',' '+hq(k));});
+const wl=document.querySelector('.weights > span');if(wl)wl.insertAdjacentHTML('beforeend',' '+hq('pesos'));
+[['#h-r','sec-ranking'],['#h-ev','sec-ev'],['#h-mx','sec-mx']].forEach(([s,k])=>{const el=document.querySelector(s);if(el)el.insertAdjacentHTML('beforeend',' '+hq(k));});
+const secH=(tblId,k)=>{const sec=$(tblId)&&$(tblId).closest('.sec');const h=sec&&sec.querySelector('h2');if(h)h.insertAdjacentHTML('beforeend',' '+hq(k));};
+secH('os-cards','sec-os');secH('t-svm','sec-svm');secH('t-tipo','sec-tipo');secH('t-psv','sec-psv');secH('t-pm','sec-pm');secH('t-pd','sec-pd');secH('t-pt','sec-pt');secH('t-ca','sec-ca');secH('t-cd','sec-cd');secH('t-cu','sec-cu');
 
 S.sort={k:'score',d:-1};init();setView();render();
 (async()=>{try{const r=await fetch('data.json?v='+Date.now(),{cache:'no-store'});if(r.ok){const x=await r.json();if(x&&x.V&&(MODE!=='admin'||!localStorage.getItem('microareas_v3'))){D=x;init();render();}}}catch(e){}})();
